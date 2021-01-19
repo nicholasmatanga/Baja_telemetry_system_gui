@@ -2,7 +2,8 @@ import tkinter as tk
 import serial
 import serial.tools.list_ports
 import time
-import nexmo
+import vonage
+
 
 # Global variables
 time_start = time.time()
@@ -12,7 +13,11 @@ ser = None
 num=None
 submit=None
 enter_num=None
-client = nexmo.Client(key='f7cc0105',secret='KduKWk6cxp7Y7oZx')
+notif_label=None
+values=None
+flag=0
+client = vonage.Client(key='f7cc0105',secret='KduKWk6cxp7Y7oZx')
+sms=vonage.Sms(client)
 
 
 # Serial communication setup function
@@ -60,13 +65,11 @@ def update_and_display():
         lit='ON'
     lights_label['text']='Lights:%s'%(lit)
     # Checking for warnings when values are exceeded
-    if int(val[0])>400:
-        notif_label['text']='WARNING:Speed over the limit!'
-        notif_frame['bg']='#4F3466'
-        notif_label['bg']='#4F3466'
+    check_warnings(data)
 
     master.after(600,update_and_display)
 
+# Simple function that creates and displays the entry box and submit button when SMS button is clicked
 def setup_entry():
     global enter_num
     global submit
@@ -76,11 +79,43 @@ def setup_entry():
     submit=tk.Button(container,bg='#808080',font=(14),text='Submit',command=lambda:store_num(enter_num.get()))
     submit.place(relwidth=0.2,relheight=0.08,relx=0.56,rely=0.75)
 
+#Function that stores the number collected in the entry box and subsequently destroys both the entry box and the submit button
 def store_num(number):
+    global num
+    global flag
     num=int(number)
     enter_num.destroy()
     submit.destroy()
-    return num
+    notif_label['text']='Number Stored'
+    flag=1
+
+def check_warnings(data):
+    global values
+    global flag
+    if data:
+        values=data.split()
+    speed = values[0]
+    
+    if int(speed)>400:
+        notif_label['text']='WARNING:Speed over the limit!'
+        notif_frame['bg']='#4F3466'
+        notif_label['bg']='#4F3466'
+        # send_text(num,notif_label['text'])
+    else:
+        notif_label['text']='No Notifications'
+
+    if flag==1:
+        time.sleep(0.7)
+        notif_label['text']='No Notifications'
+        flag=0
+    
+# def send_text(number,msg):
+#     sms.send_message({
+#         'from':'Baja GUI',
+#         'to':number,
+#         'text':msg
+#     })
+
 
 
 master = tk.Tk()
@@ -127,7 +162,6 @@ lights_label.pack(side='left')
 
 notif_label = tk.Label(notif_frame,fg='white',font=(14),bg='#130013')
 notif_label.pack(side='left')
-
 
 # Serial Setup
 connectPort = ser_setup()
